@@ -25,6 +25,7 @@ function target(id: number, extra: Partial<Target> = {}): Target {
     port: 22,
     connectionType: "ssh",
     jumpHosts: [],
+    cloudflareTunnel: false,
     statusCheckEnabled: true,
     statusCheckInterval: null,
     ...extra,
@@ -39,6 +40,7 @@ function setup(
   const emitted: unknown[] = [];
   const ping = vi.fn(async () => reachable);
   const pingThroughJumpHosts = vi.fn(async () => reachable);
+  const pingCloudflareTunnel = vi.fn(async () => reachable);
   const loadTargets = vi.fn(
     async (filter: { userId?: string; hostIds?: number[] }) =>
       targets.filter(
@@ -52,10 +54,18 @@ function setup(
     loadSharedHostIds: async (userId) => shared[userId] ?? [],
     ping,
     pingThroughJumpHosts,
+    pingCloudflareTunnel,
     globalInterval: () => 60,
     emit: (payload) => emitted.push(payload),
   });
-  return { service, emitted, ping, pingThroughJumpHosts, loadTargets };
+  return {
+    service,
+    emitted,
+    ping,
+    pingThroughJumpHosts,
+    pingCloudflareTunnel,
+    loadTargets,
+  };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -142,6 +152,17 @@ describe("HostStatusService", () => {
     await flush();
     expect(ping).not.toHaveBeenCalled();
     expect(pingThroughJumpHosts).toHaveBeenCalledOnce();
+  });
+
+  it("goes through the Cloudflare Tunnel hostname when a host uses one", async () => {
+    const { service, ping, pingCloudflareTunnel } = setup([
+      target(1, { cloudflareTunnel: true }),
+    ]);
+    active = service;
+    await service.statusesFor("owner", null);
+    await flush();
+    expect(ping).not.toHaveBeenCalled();
+    expect(pingCloudflareTunnel).toHaveBeenCalledWith("10.0.0.1");
   });
 
   it("asks a registered plugin for a protocol's port", async () => {
@@ -307,6 +328,7 @@ describe("toStatusTarget", () => {
         port: 22,
         connectionType: "",
         jumpHosts: '[{"hostId":3},{"bad":1}]',
+        sshOptions: null,
         statusCheckEnabled: false,
         statusCheckInterval: 30,
       }),
@@ -317,8 +339,27 @@ describe("toStatusTarget", () => {
       port: 22,
       connectionType: "ssh",
       jumpHosts: [{ hostId: 3 }],
+      cloudflareTunnel: false,
       statusCheckEnabled: false,
       statusCheckInterval: 30,
     });
+  });
+
+  it("reads the Cloudflare Tunnel option for SSH hosts only", () => {
+    const row = {
+      id: 1,
+      userId: "u",
+      ip: "ssh.example.com",
+      port: 22,
+      connectionType: "ssh",
+      jumpHosts: null,
+      sshOptions: '{"cloudflareTunnel":true}',
+      statusCheckEnabled: true,
+      statusCheckInterval: null,
+    };
+    expect(toStatusTarget(row).cloudflareTunnel).toBe(true);
+    expect(
+      toStatusTarget({ ...row, connectionType: "rdp" }).cloudflareTunnel,
+    ).toBe(false);
   });
 });

@@ -16,6 +16,7 @@ describe("parseSshOptions", () => {
           agentSocketPath: "/run/agent",
           agentIdentity: null,
           agentForwarding: true,
+          cloudflareTunnel: true,
           environmentVariables: [{ key: "A", value: 1 }, null],
           theme: "nord",
           cfAccessClientId: "gone",
@@ -28,6 +29,7 @@ describe("parseSshOptions", () => {
       agentSocketPath: "/run/agent",
       agentIdentity: null,
       agentForwarding: true,
+      cloudflareTunnel: true,
       environmentVariables: [{ key: "A", value: "1" }],
     });
   });

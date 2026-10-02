@@ -28,7 +28,12 @@ import {
   type HostStatus,
 } from "./host-status.js";
 import { ConcurrentLimiter } from "./limiter.js";
-import { tcpPing, tcpPingThroughJumpHost } from "./tcp-ping.js";
+import {
+  cloudflareTunnelPing,
+  tcpPing,
+  tcpPingThroughJumpHost,
+} from "./tcp-ping.js";
+import { parseSshOptions } from "../ssh-options.js";
 
 export const GLOBAL_STATUS_INTERVAL_KEY = "global_status_check_interval";
 export const DEFAULT_STATUS_INTERVAL = 60;
@@ -58,6 +63,7 @@ export interface StatusTarget {
   port: number;
   connectionType: string;
   jumpHosts: Array<{ hostId: number }>;
+  cloudflareTunnel: boolean;
   statusCheckEnabled: boolean;
   statusCheckInterval: number | null;
 }
@@ -74,6 +80,7 @@ export interface HostStatusDeps {
   /** Hosts other users shared with this one, directly or through a role. */
   loadSharedHostIds?: (userId: string) => Promise<number[]>;
   ping: (host: string, port: number) => Promise<boolean>;
+  pingCloudflareTunnel: (hostname: string) => Promise<boolean>;
   pingThroughJumpHosts: (
     target: StatusTarget,
     port: number,
@@ -98,13 +105,18 @@ function parseJumpHosts(raw: string | null): Array<{ hostId: number }> {
 }
 
 export function toStatusTarget(row: HostStatusTargetRow): StatusTarget {
+  const connectionType = row.connectionType || "ssh";
   return {
     id: row.id,
     userId: row.userId,
     ip: row.ip,
     port: row.port,
-    connectionType: row.connectionType || "ssh",
+    connectionType,
     jumpHosts: parseJumpHosts(row.jumpHosts),
+    // The tunnel route carries SSH only; other protocols probe their port.
+    cloudflareTunnel:
+      connectionType === "ssh" &&
+      parseSshOptions(row.sshOptions).cloudflareTunnel === true,
     statusCheckEnabled: row.statusCheckEnabled !== false,
     statusCheckInterval: row.statusCheckInterval ?? null,
   };
@@ -127,6 +139,7 @@ const defaultDeps: HostStatusDeps = {
     return [...new Set(entries.map((entry) => entry.hostId))];
   },
   ping: (host, port) => tcpPing(host, port, 5000),
+  pingCloudflareTunnel: (hostname) => cloudflareTunnelPing(hostname, 5000),
   pingThroughJumpHosts: async (target, port) => {
     const { createJumpHostChain } = await import("../jump-host-chain.js");
     const client = await createJumpHostChain(
@@ -433,7 +446,9 @@ export class HostStatusService {
       reachable =
         target.jumpHosts.length > 0
           ? await this.deps.pingThroughJumpHosts(target, port)
-          : await this.deps.ping(target.ip, port);
+          : target.cloudflareTunnel
+            ? await this.deps.pingCloudflareTunnel(target.ip)
+            : await this.deps.ping(target.ip, port);
     } catch {
       reachable = false;
     }

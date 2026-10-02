@@ -17,6 +17,7 @@ export const SSH_OPTION_KEYS = [
   "agentSocketPath",
   "agentIdentity",
   "agentForwarding",
+  "cloudflareTunnel",
   "environmentVariables",
 ] as const satisfies readonly (keyof HostSshOptions)[];
 
@@ -73,6 +74,9 @@ export function parseSshOptions(value: unknown): HostSshOptions {
   if (agentIdentity !== undefined) options.agentIdentity = agentIdentity;
   if (typeof source.agentForwarding === "boolean") {
     options.agentForwarding = source.agentForwarding;
+  }
+  if (typeof source.cloudflareTunnel === "boolean") {
+    options.cloudflareTunnel = source.cloudflareTunnel;
   }
   if (Array.isArray(source.environmentVariables)) {
     options.environmentVariables = source.environmentVariables

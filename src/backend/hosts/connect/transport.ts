@@ -1,6 +1,6 @@
 /**
- * How the bytes get to a host: port knocking, a jump host chain or a SOCKS5
- * proxy, in that order. Sets config.sock and
+ * How the bytes get to a host: port knocking, a jump host chain, a Cloudflare
+ * Tunnel or a SOCKS5 proxy, in that order. Sets config.sock and
  * returns the jump client so the caller can close it with the connection.
  */
 
@@ -12,6 +12,7 @@ import {
   type SOCKS5Config,
 } from "../../utils/socks5-helper.js";
 import type { ProxyNode } from "../../../types/index.js";
+import { openCloudflareTunnel } from "../cloudflare-tunnel.js";
 import { createJumpHostChain } from "../jump-host-chain.js";
 import { resolveSshConnectConfigHost } from "../ssh-dns.js";
 import { performPortKnocking } from "../terminal-auth-helpers.js";
@@ -40,7 +41,7 @@ function getHostSocks5Config(host: SshConnectHost): SOCKS5Config | null {
 class SshTransportError extends Error {
   constructor(
     message: string,
-    readonly stage: "jump-host" | "jump-forward" | "proxy",
+    readonly stage: "jump-host" | "jump-forward" | "proxy" | "cloudflare",
     options?: { cause?: unknown },
   ) {
     super(message, options);
@@ -131,6 +132,21 @@ export async function openSshTransport(
       throw error;
     }
     return { jumpClient, via: "jump" };
+  }
+
+  if (host.sshOptions?.cloudflareTunnel) {
+    options.log?.("info", `Connecting through Cloudflare Tunnel ${host.ip}`);
+    try {
+      config.sock = await openCloudflareTunnel(
+        host.ip,
+        config.readyTimeout ?? 30000,
+      );
+    } catch (error) {
+      throw new SshTransportError(getErrorMessage(error), "cloudflare", {
+        cause: error,
+      });
+    }
+    return { jumpClient: null, via: "proxy" };
   }
 
   const proxyConfig = getHostSocks5Config(host);

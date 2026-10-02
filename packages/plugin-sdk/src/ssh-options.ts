@@ -15,6 +15,11 @@ export interface HostSshOptions {
   agentIdentity?: string | null;
   /** Forward the agent (or the host's key) into the session. */
   agentForwarding?: boolean;
+  /**
+   * Reach the host through its Cloudflare Tunnel public hostname, the way
+   * `cloudflared access ssh --hostname` does, instead of a TCP connection.
+   */
+  cloudflareTunnel?: boolean;
   /** Variables exported into an interactive session. */
   environmentVariables?: Array<{ key: string; value: string }>;
 }

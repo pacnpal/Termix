@@ -60,6 +60,7 @@ export interface HostStatusTargetRow {
   port: number;
   connectionType: string;
   jumpHosts: string | null;
+  sshOptions: string | null;
   statusCheckEnabled: boolean;
   statusCheckInterval: number | null;
 }
@@ -286,6 +287,7 @@ export class HostResolutionRepository {
         port: hosts.port,
         connectionType: hosts.connectionType,
         jumpHosts: hosts.jumpHosts,
+        sshOptions: hosts.sshOptions,
         statusCheckEnabled: hosts.statusCheckEnabled,
         statusCheckInterval: hosts.statusCheckInterval,
       })

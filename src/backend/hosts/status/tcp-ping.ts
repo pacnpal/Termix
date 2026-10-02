@@ -1,5 +1,6 @@
 import net from "net";
 import type { Client } from "ssh2";
+import { openCloudflareTunnel } from "../cloudflare-tunnel.js";
 
 /**
  * Opens a TCP connection and closes it again. An SSH server gets a polite
@@ -62,6 +63,34 @@ export function tcpPing(
     });
     socket.connect(port, host);
   });
+}
+
+/**
+ * The same check through a Cloudflare Tunnel hostname: the WebSocket only
+ * opens once the tunnel has reached sshd. Answers the banner like tcpPing.
+ */
+export async function cloudflareTunnelPing(
+  hostname: string,
+  timeoutMs = 5000,
+): Promise<boolean> {
+  let stream: Awaited<ReturnType<typeof openCloudflareTunnel>>;
+  try {
+    stream = await openCloudflareTunnel(hostname, timeoutMs);
+  } catch {
+    return false;
+  }
+  stream.on("error", () => {
+    // expected: the probe hangs up mid-handshake
+  });
+  const dataTimeout = setTimeout(() => stream.destroy(), 2000);
+  stream.once("data", (data: Buffer) => {
+    clearTimeout(dataTimeout);
+    if (data.toString("utf8").startsWith("SSH-")) {
+      stream.end("SSH-2.0-TermixHealthCheck\r\n");
+    }
+    setTimeout(() => stream.destroy(), 200);
+  });
+  return true;
 }
 
 /** The same check from the far end of a jump host chain. Ends the chain. */

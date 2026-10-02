@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   resolveHostById: vi.fn(),
   openCloudflareTunnel: vi.fn(),
   createSocks5Connection: vi.fn(),
+  buildConnectConfig: vi.fn(),
 }));
 
 vi.mock("ssh2", () => ({
@@ -36,15 +37,18 @@ vi.mock("../../utils/socks5-helper.js", () => ({
   createSocks5Connection: mocks.createSocks5Connection,
 }));
 vi.mock("../../hosts/connect/build-connect-config.js", () => ({
-  buildConnectConfig: async () => ({
-    outcome: { status: "ready" },
-    config: {},
-  }),
+  buildConnectConfig: async () => mocks.buildConnectConfig(),
 }));
 
 import { createJumpHostChain } from "../../hosts/jump-host-chain.js";
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.buildConnectConfig.mockReturnValue({
+    outcome: { status: "ready" },
+    config: {},
+  });
+});
 
 describe("createJumpHostChain", () => {
   it("reaches a first hop through its Cloudflare Tunnel", async () => {
@@ -98,5 +102,26 @@ describe("createJumpHostChain", () => {
       { forwardedTo: "ssh-b.example.com:443" },
     );
     expect(client?.connectConfig?.sock).toEqual({ tunneled: true });
+  });
+
+  it("closes a first hop's tunnel when the hop fails before connecting", async () => {
+    mocks.resolveHostById.mockResolvedValueOnce({
+      id: 2,
+      ip: "ssh-a.example.com",
+      port: 22,
+      username: "root",
+      sshOptions: { cloudflareTunnel: true },
+    });
+    const tunnel = { destroy: vi.fn() };
+    mocks.openCloudflareTunnel.mockResolvedValueOnce(tunnel);
+    mocks.buildConnectConfig.mockReturnValueOnce({
+      outcome: { status: "error", message: "no credentials" },
+      config: {},
+    });
+
+    await expect(
+      createJumpHostChain([{ hostId: 2 }], "owner-1"),
+    ).rejects.toThrow("no credentials");
+    expect(tunnel.destroy).toHaveBeenCalledOnce();
   });
 });

@@ -74,11 +74,15 @@ export async function createJumpHostChain(
 
   let currentClient: SSHClient | null = null;
   const clients: SSHClient[] = [];
+  // The first hop's tunnel or SOCKS5 socket, opened before its client
+  // connects; a hop that fails before then would otherwise leak it.
+  let proxySocket: import("stream").Duplex | null = null;
   let closed = false;
   const closeChain = () => {
     if (closed) return;
     closed = true;
     for (const client of clients) client.end();
+    proxySocket?.destroy();
   };
 
   try {
@@ -110,7 +114,6 @@ export async function createJumpHostChain(
 
     const firstHop = jumpHostConfigs[0]!;
     const firstHopSocks5Config = getJumpHostSocks5Config(firstHop);
-    let proxySocket: import("stream").Duplex | null = null;
     if (firstHop.sshOptions?.cloudflareTunnel) {
       proxySocket = await openCloudflareTunnel(firstHop.ip);
     } else if (firstHopSocks5Config?.useSocks5) {

@@ -1,0 +1,21 @@
+src/backend/hosts/jump-host-chain.ts
+  s_e8f6701c480512::t_010f9d92166975 77-79,85
+src/backend/tests/hosts/jump-host-chain.test.ts
+  s_e8f6701c480512::t_010f9d92166975 8,40,45-51,106-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0a89b54dde98cd59b094cf394a4c2eac78951a9a",
+  "prompts": {},
+  "sessions": {
+    "s_e8f6701c480512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359465b2-0649-4d5e-8edc-fe68ae183aef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "pacnpal <183241239+pacnpal@users.noreply.github.com>"
+    }
+  }
+}

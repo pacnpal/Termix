@@ -601,6 +601,7 @@ describe("connectHost", () => {
       [{ hostId: 2 }],
       "owner-1",
       prompt,
+      undefined,
     );
     connection.dispose();
   });
@@ -610,12 +611,13 @@ describe("connectHost", () => {
     mocks.createJumpHostChain.mockResolvedValueOnce(jumpClient);
     const connection = await connectHost(
       host({ jumpHosts: [{ hostId: 2 }, { hostId: 3 }] }),
-      { userId: "user-1", purpose: "fleet" },
+      { userId: "user-1", purpose: "fleet", timeoutMs: 5000 },
     );
     expect(mocks.createJumpHostChain).toHaveBeenCalledWith(
       [{ hostId: 2 }, { hostId: 3 }],
       "owner-1",
       undefined,
+      5000,
     );
     expect(jumpClient.forwardOut).toHaveBeenCalledWith(
       "127.0.0.1",

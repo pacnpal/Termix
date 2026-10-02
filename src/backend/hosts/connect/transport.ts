@@ -133,6 +133,7 @@ export async function openSshTransport(
       host.jumpHosts,
       jumpUserId,
       options.prompt,
+      options.timeoutMs,
     );
     if (!jumpClient) {
       throw new SshTransportError(

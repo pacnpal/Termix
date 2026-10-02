@@ -64,11 +64,16 @@ describe("createJumpHostChain", () => {
     });
     mocks.openCloudflareTunnel.mockResolvedValueOnce({ tunneled: true });
 
-    const client = (await createJumpHostChain([{ hostId: 2 }], "owner-1")) as
-      (EventEmitter & { connectConfig?: Record<string, unknown> }) | null;
+    const client = (await createJumpHostChain(
+      [{ hostId: 2 }],
+      "owner-1",
+      undefined,
+      5000,
+    )) as (EventEmitter & { connectConfig?: Record<string, unknown> }) | null;
 
     expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith(
       "ssh-a.example.com",
+      5000,
     );
     expect(mocks.createSocks5Connection).not.toHaveBeenCalled();
     expect(client?.connectConfig?.sock).toEqual({ tunneled: true });
@@ -94,11 +99,13 @@ describe("createJumpHostChain", () => {
     const client = (await createJumpHostChain(
       [{ hostId: 1 }, { hostId: 2 }],
       "owner-1",
+      undefined,
+      5000,
     )) as (EventEmitter & { connectConfig?: Record<string, unknown> }) | null;
 
     expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith(
       "ssh-b.example.com",
-      undefined,
+      5000,
       { forwardedTo: "ssh-b.example.com:443" },
     );
     expect(client?.connectConfig?.sock).toEqual({ tunneled: true });

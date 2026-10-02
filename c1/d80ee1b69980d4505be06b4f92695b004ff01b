@@ -1,0 +1,27 @@
+src/backend/tests/hosts/connect/pipeline.test.ts
+  s_e8f6701c480512::t_4ea4a2269431e7 604,614,620
+src/backend/hosts/jump-host-chain.ts
+  s_e8f6701c480512::t_4ea4a2269431e7 261-268
+  s_e8f6701c480512::t_a8b4de0bb572d4 70-71,120
+src/backend/hosts/connect/transport.ts
+  s_e8f6701c480512::t_a8b4de0bb572d4 136
+src/backend/tests/hosts/jump-host-chain.test.ts
+  s_e8f6701c480512::t_4ea4a2269431e7 67-72,76
+  s_e8f6701c480512::t_a8b4de0bb572d4 102-103,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c1d80ee1b69980d4505be06b4f92695b004ff01b",
+  "prompts": {},
+  "sessions": {
+    "s_e8f6701c480512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359465b2-0649-4d5e-8edc-fe68ae183aef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "pacnpal <183241239+pacnpal@users.noreply.github.com>"
+    }
+  }
+}

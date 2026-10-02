@@ -601,7 +601,7 @@ describe("connectHost", () => {
       [{ hostId: 2 }],
       "owner-1",
       prompt,
-      undefined,
+      30000,
     );
     connection.dispose();
   });
@@ -776,6 +776,28 @@ describe("connectHost", () => {
         timeoutMs: 20,
       }),
     ).rejects.toThrow("SSH connection timeout");
+  });
+
+  it("counts a tunnel's handshake against the connection timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      FakeSshClient.nextBehaviour = ["hang"];
+      mocks.openCloudflareTunnel.mockImplementationOnce(async () => {
+        vi.advanceTimersByTime(900);
+        return { tunneled: true };
+      });
+      const attempt = connectHost(
+        host({ sshOptions: { cloudflareTunnel: true } }),
+        { userId: "user-1", purpose: "fleet", timeoutMs: 1000 },
+      );
+      const rejected = expect(attempt).rejects.toThrow(
+        "SSH connection timeout",
+      );
+      await vi.advanceTimersByTimeAsync(150);
+      await rejected;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("lets the provider react to an auth failure", async () => {

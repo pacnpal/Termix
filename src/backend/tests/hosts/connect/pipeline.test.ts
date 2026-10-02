@@ -657,9 +657,12 @@ describe("connectHost", () => {
         useSocks5: true,
         socks5Host: "proxy",
       }),
-      { userId: "user-1", purpose: "fleet" },
+      { userId: "user-1", purpose: "fleet", timeoutMs: 5000 },
     );
-    expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith("ssh.example.com");
+    expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith(
+      "ssh.example.com",
+      5000,
+    );
     expect(mocks.createJumpHostChain).not.toHaveBeenCalled();
     expect(mocks.createSocks5Connection).not.toHaveBeenCalled();
     expect(

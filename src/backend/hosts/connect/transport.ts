@@ -55,6 +55,8 @@ export interface OpenTransportOptions {
   portKnock?: boolean;
   /** Resolve DNS up front for a direct connection. Default true. */
   resolveDns?: boolean;
+  /** Bounds the Cloudflare Tunnel handshake. Default 30s. */
+  timeoutMs?: number;
   log?: SshAuthLog;
 }
 
@@ -116,7 +118,7 @@ export async function openSshTransport(
   if (host.sshOptions?.cloudflareTunnel) {
     options.log?.("info", `Connecting through Cloudflare Tunnel ${host.ip}`);
     try {
-      config.sock = await openCloudflareTunnel(host.ip);
+      config.sock = await openCloudflareTunnel(host.ip, options.timeoutMs);
     } catch (error) {
       throw new SshTransportError(getErrorMessage(error), "cloudflare", {
         cause: error,

@@ -9,16 +9,30 @@
  */
 
 import type { Duplex } from "stream";
+import tls from "tls";
 import WebSocket, { createWebSocketStream } from "ws";
 
+/**
+ * `through` is a stream already open to the hostname's port 443 (a jump
+ * host's forwardOut); TLS and the WebSocket then run over it.
+ */
 export function openCloudflareTunnel(
   hostname: string,
   // connectHost's own default; its timer only starts once this has opened.
   timeoutMs = 30000,
+  through?: Duplex,
 ): Promise<Duplex> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`wss://${hostname}`, {
       handshakeTimeout: timeoutMs,
+      ...(through && {
+        createConnection: (options) =>
+          tls.connect({
+            ...(options as tls.ConnectionOptions),
+            servername: options.host ?? undefined,
+            socket: through,
+          }),
+      }),
     });
     ws.once("open", () => {
       ws.off("error", onError);

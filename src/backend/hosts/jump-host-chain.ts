@@ -234,20 +234,32 @@ export async function createJumpHostChain(
         );
 
         if (currentClient) {
+          // A tunnel hop is reached on its hostname's 443 from the hop before.
+          const tunnel = !!jumpHostConfig.sshOptions?.cloudflareTunnel;
+          const fail = (err: Error) => {
+            clearTimeout(timeout);
+            lastError = err;
+            resolve(false);
+          };
           currentClient.forwardOut(
             "127.0.0.1",
             0,
             jumpHostConfig.ip,
-            jumpHostConfig.port || 22,
+            tunnel ? 443 : jumpHostConfig.port || 22,
             (err, stream) => {
-              if (err) {
-                clearTimeout(timeout);
-                lastError = err;
-                resolve(false);
+              if (err) return fail(err);
+              if (!tunnel) {
+                connectConfig.sock = stream;
+                jumpClient.connect(connectConfig);
                 return;
               }
-              connectConfig.sock = stream;
-              jumpClient.connect(connectConfig);
+              openCloudflareTunnel(jumpHostConfig.ip, undefined, stream).then(
+                (sock) => {
+                  connectConfig.sock = sock;
+                  jumpClient.connect(connectConfig);
+                },
+                fail,
+              );
             },
           );
         } else if (proxySocket) {

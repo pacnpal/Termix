@@ -14,6 +14,15 @@ vi.mock("ssh2", () => ({
       this.connectConfig = config;
       setImmediate(() => this.emit("ready"));
     }
+    forwardOut(
+      _src: string,
+      _srcPort: number,
+      host: string,
+      port: number,
+      callback: (err: Error | undefined, stream: unknown) => void,
+    ) {
+      callback(undefined, { forwardedTo: `${host}:${port}` });
+    }
     end() {}
   },
 }));
@@ -58,6 +67,36 @@ describe("createJumpHostChain", () => {
       "ssh-a.example.com",
     );
     expect(mocks.createSocks5Connection).not.toHaveBeenCalled();
+    expect(client?.connectConfig?.sock).toEqual({ tunneled: true });
+  });
+
+  it("reaches a later tunnel hop on 443 through the hop before it", async () => {
+    mocks.resolveHostById
+      .mockResolvedValueOnce({
+        id: 1,
+        ip: "10.0.0.1",
+        port: 22,
+        username: "root",
+      })
+      .mockResolvedValueOnce({
+        id: 2,
+        ip: "ssh-b.example.com",
+        port: 22,
+        username: "root",
+        sshOptions: { cloudflareTunnel: true },
+      });
+    mocks.openCloudflareTunnel.mockResolvedValueOnce({ tunneled: true });
+
+    const client = (await createJumpHostChain(
+      [{ hostId: 1 }, { hostId: 2 }],
+      "owner-1",
+    )) as (EventEmitter & { connectConfig?: Record<string, unknown> }) | null;
+
+    expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith(
+      "ssh-b.example.com",
+      undefined,
+      { forwardedTo: "ssh-b.example.com:443" },
+    );
     expect(client?.connectConfig?.sock).toEqual({ tunneled: true });
   });
 });

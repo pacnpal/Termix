@@ -121,6 +121,7 @@ export async function connectHost(
     ({ jumpClient } = await openSshTransport(host, config, {
       log: options.log,
       prompt: options.prompt,
+      timeoutMs: options.timeoutMs,
       ...options.transport,
     }));
   }

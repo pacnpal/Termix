@@ -659,10 +659,7 @@ describe("connectHost", () => {
       }),
       { userId: "user-1", purpose: "fleet" },
     );
-    expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith(
-      "ssh.example.com",
-      expect.any(Number),
-    );
+    expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith("ssh.example.com");
     expect(mocks.createJumpHostChain).not.toHaveBeenCalled();
     expect(mocks.createSocks5Connection).not.toHaveBeenCalled();
     expect(
@@ -801,6 +798,12 @@ describe("connectHost", () => {
         host({ useSocks5: true, socks5Host: "p", socks5Port: 1 }),
       ),
     ).toBe("stats:owner-1:10.0.0.7:22:root:socks5:p:1");
+    expect(
+      getConnectionPoolKey(
+        "fleet",
+        host({ sshOptions: { cloudflareTunnel: true } }),
+      ),
+    ).toBe("fleet:owner-1:10.0.0.7:22:root:cloudflare");
 
     const result = await withHostConnection(
       "fleet:x",

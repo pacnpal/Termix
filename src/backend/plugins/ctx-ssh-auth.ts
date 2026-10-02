@@ -253,7 +253,7 @@ export function createPluginSsh({ manifest, bag, audit }: Deps): PluginSsh {
   const poolKey = (pool: string, host: PluginSshHost) =>
     `${pool}:${host.userId}:${host.ip}:${host.port}:${host.username}${
       host.useSocks5 ? `:socks5:${host.socks5Host}:${host.socks5Port}` : ""
-    }`;
+    }${host.sshOptions?.cloudflareTunnel ? ":cloudflare" : ""}`;
 
   return {
     connect: async (host, options) => {

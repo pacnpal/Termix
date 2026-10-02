@@ -1,6 +1,7 @@
 import { Client as SSHClient } from "ssh2";
 import { fileLogger } from "../utils/logger.js";
 import { createSocks5Connection } from "../utils/socks5-helper.js";
+import { openCloudflareTunnel } from "./cloudflare-tunnel.js";
 import { getErrorMessage } from "../utils/error-message.js";
 import { getJumpHostSocks5Config } from "./jump-host-proxy.js";
 import { buildConnectConfig } from "./connect/build-connect-config.js";
@@ -28,6 +29,7 @@ type JumpHostConfig = {
   socks5Username?: string | null;
   socks5Password?: string | null;
   socks5ProxyChain?: string | import("../../types/index.js").ProxyNode[] | null;
+  sshOptions?: SshConnectHost["sshOptions"];
   [key: string]: unknown;
 };
 
@@ -106,10 +108,12 @@ export async function createJumpHostChain(
       }
     }
 
-    const firstHopSocks5Config = getJumpHostSocks5Config(jumpHostConfigs[0]);
-    let proxySocket: import("net").Socket | null = null;
-    if (firstHopSocks5Config?.useSocks5) {
-      const firstHop = jumpHostConfigs[0]!;
+    const firstHop = jumpHostConfigs[0]!;
+    const firstHopSocks5Config = getJumpHostSocks5Config(firstHop);
+    let proxySocket: import("stream").Duplex | null = null;
+    if (firstHop.sshOptions?.cloudflareTunnel) {
+      proxySocket = await openCloudflareTunnel(firstHop.ip);
+    } else if (firstHopSocks5Config?.useSocks5) {
       proxySocket = await createSocks5Connection(
         firstHop.ip,
         firstHop.port || 22,

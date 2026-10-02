@@ -201,7 +201,8 @@ export function getConnectionPoolKey(
   const socks5Key = host.useSocks5
     ? `:socks5:${host.socks5Host}:${host.socks5Port}`
     : "";
-  return `${prefix}:${host.userId}:${host.ip}:${host.port}:${host.username}${socks5Key}`;
+  const tunnelKey = host.sshOptions?.cloudflareTunnel ? ":cloudflare" : "";
+  return `${prefix}:${host.userId}:${host.ip}:${host.port}:${host.username}${socks5Key}${tunnelKey}`;
 }
 
 /**

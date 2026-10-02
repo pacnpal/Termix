@@ -116,10 +116,7 @@ export async function openSshTransport(
   if (host.sshOptions?.cloudflareTunnel) {
     options.log?.("info", `Connecting through Cloudflare Tunnel ${host.ip}`);
     try {
-      config.sock = await openCloudflareTunnel(
-        host.ip,
-        config.readyTimeout ?? 30000,
-      );
+      config.sock = await openCloudflareTunnel(host.ip);
     } catch (error) {
       throw new SshTransportError(getErrorMessage(error), "cloudflare", {
         cause: error,

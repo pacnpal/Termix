@@ -13,7 +13,8 @@ import WebSocket, { createWebSocketStream } from "ws";
 
 export function openCloudflareTunnel(
   hostname: string,
-  timeoutMs: number,
+  // connectHost's own default; its timer only starts once this has opened.
+  timeoutMs = 30000,
 ): Promise<Duplex> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`wss://${hostname}`, {

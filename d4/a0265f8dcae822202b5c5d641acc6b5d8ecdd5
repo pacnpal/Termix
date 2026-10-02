@@ -1,0 +1,32 @@
+src/backend/tests/hosts/jump-host-chain.test.ts
+  s_e8f6701c480512::t_94dcc8f5967613 55
+  s_e8f6701c480512::t_898bd58f8ab371 1-54,56-63
+src/backend/hosts/cloudflare-tunnel.ts
+  s_e8f6701c480512::t_2444caf741b601 16-17
+src/backend/hosts/connect/transport.ts
+  s_e8f6701c480512::t_2444caf741b601 119
+src/backend/hosts/connect/connect-host.ts
+  s_e8f6701c480512::t_2444caf741b601 204-205
+src/backend/hosts/jump-host-chain.ts
+  s_e8f6701c480512::t_2444caf741b601 4,32,111-116
+src/backend/plugins/ctx-ssh-auth.ts
+  s_e8f6701c480512::t_2444caf741b601 256
+src/backend/tests/hosts/connect/pipeline.test.ts
+  s_e8f6701c480512::t_94dcc8f5967613 662,801-806
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d4a0265f8dcae822202b5c5d641acc6b5d8ecdd5",
+  "prompts": {},
+  "sessions": {
+    "s_e8f6701c480512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359465b2-0649-4d5e-8edc-fe68ae183aef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "pacnpal <183241239+pacnpal@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+src/backend/hosts/connect/transport.ts
+  s_e8f6701c480512::t_cc0c22b75e1c5d 2-3,15,44,137-149
+  s_e8f6701c480512::t_a968f0992dce61 150-151
+src/backend/hosts/cloudflare-tunnel.ts
+  s_e8f6701c480512::t_1eb0e1d0304b9e 1-25,29-30,32-37
+  s_e8f6701c480512::t_bb2878bf581d5b 26-28,31
+src/backend/hosts/status/host-status-service.ts
+  s_e8f6701c480512::t_be51618c96fc09 108,114,116-119
+  s_e8f6701c480512::t_206e4e180bae77 31-36,66,83,142,449-451
+src/backend/tests/hosts/ssh-options.test.ts
+  s_e8f6701c480512::t_318e0d9178fa46 19,32
+src/backend/database/repositories/host-resolution-repository.ts
+  s_e8f6701c480512::t_206e4e180bae77 63,290
+src/backend/hosts/status/tcp-ping.ts
+  s_e8f6701c480512::t_a2a341aa0f0d58 3,68-93
+  s_e8f6701c480512::t_e6819bc8a201ac 94-95
+src/ui/sidebar/HostEditorGeneralTab.tsx
+  s_e8f6701c480512::t_e2b34f860cf8ac 457-469
+src/backend/hosts/ssh-options.ts
+  s_e8f6701c480512::t_d34b8c92035056 20,78-79
+  s_e8f6701c480512::t_9f3d82a8fb0656 80
+src/ui/sidebar/HostEditorData.ts
+  s_e8f6701c480512::t_e2b34f860cf8ac 157,305
+src/backend/tests/hosts/status/host-status-service.test.ts
+  s_e8f6701c480512::t_0b059ab832de79 28,43,57,61-68,157-167,331,342,347-363
+  s_e8f6701c480512::t_1311fd2a9d2734 364
+packages/plugin-sdk/src/ssh-options.ts
+  s_e8f6701c480512::t_d34b8c92035056 18-22
+src/backend/tests/hosts/connect/pipeline.test.ts
+  s_e8f6701c480512::t_318e0d9178fa46 27,54-56,650-668
+  s_e8f6701c480512::t_9cb101220aacad 669-670
+src/ui/locales/en.json
+  s_e8f6701c480512::t_90f23524245319 415-416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "75298171f98b95d4ff66b911121edea703ddf896",
+  "prompts": {},
+  "sessions": {
+    "s_e8f6701c480512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359465b2-0649-4d5e-8edc-fe68ae183aef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "pacnpal <183241239+pacnpal@users.noreply.github.com>"
+    }
+  }
+}

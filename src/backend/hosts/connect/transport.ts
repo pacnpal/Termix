@@ -1,6 +1,6 @@
 /**
- * How the bytes get to a host: port knocking, a jump host chain or a SOCKS5
- * proxy, in that order. Sets config.sock and
+ * How the bytes get to a host: port knocking, a Cloudflare Tunnel, a jump
+ * host chain or a SOCKS5 proxy, in that order. Sets config.sock and
  * returns the jump client so the caller can close it with the connection.
  */
 
@@ -12,6 +12,7 @@ import {
   type SOCKS5Config,
 } from "../../utils/socks5-helper.js";
 import type { ProxyNode } from "../../../types/index.js";
+import { openCloudflareTunnel } from "../cloudflare-tunnel.js";
 import { createJumpHostChain } from "../jump-host-chain.js";
 import { resolveSshConnectConfigHost } from "../ssh-dns.js";
 import { performPortKnocking } from "../terminal-auth-helpers.js";
@@ -40,7 +41,7 @@ function getHostSocks5Config(host: SshConnectHost): SOCKS5Config | null {
 class SshTransportError extends Error {
   constructor(
     message: string,
-    readonly stage: "jump-host" | "jump-forward" | "proxy",
+    readonly stage: "jump-host" | "jump-forward" | "proxy" | "cloudflare",
     options?: { cause?: unknown },
   ) {
     super(message, options);
@@ -54,6 +55,8 @@ export interface OpenTransportOptions {
   portKnock?: boolean;
   /** Resolve DNS up front for a direct connection. Default true. */
   resolveDns?: boolean;
+  /** Bounds the Cloudflare Tunnel handshake. Default 30s. */
+  timeoutMs?: number;
   log?: SshAuthLog;
 }
 
@@ -111,12 +114,26 @@ export async function openSshTransport(
 
   let via: OpenedTransport["via"] = "direct";
 
+  // The tunnel hostname is only reachable this way, so it wins over the rest.
+  if (host.sshOptions?.cloudflareTunnel) {
+    options.log?.("info", `Connecting through Cloudflare Tunnel ${host.ip}`);
+    try {
+      config.sock = await openCloudflareTunnel(host.ip, options.timeoutMs);
+    } catch (error) {
+      throw new SshTransportError(getErrorMessage(error), "cloudflare", {
+        cause: error,
+      });
+    }
+    return { jumpClient: null, via: "proxy" };
+  }
+
   const jumpUserId = host.userId || "";
   if (host.jumpHosts && host.jumpHosts.length > 0 && jumpUserId) {
     const jumpClient = await createJumpHostChain(
       host.jumpHosts,
       jumpUserId,
       options.prompt,
+      options.timeoutMs,
     );
     if (!jumpClient) {
       throw new SshTransportError(

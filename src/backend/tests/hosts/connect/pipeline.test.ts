@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   performPortKnocking: vi.fn(),
   createJumpHostChain: vi.fn(),
   createSocks5Connection: vi.fn(),
+  openCloudflareTunnel: vi.fn(),
   resolveHostById: vi.fn(),
 }));
 
@@ -49,6 +50,9 @@ vi.mock("../../../hosts/jump-host-chain.js", () => ({
 }));
 vi.mock("../../../utils/socks5-helper.js", () => ({
   createSocks5Connection: mocks.createSocks5Connection,
+}));
+vi.mock("../../../hosts/cloudflare-tunnel.js", () => ({
+  openCloudflareTunnel: mocks.openCloudflareTunnel,
 }));
 vi.mock("../../../hosts/ssh-dns.js", () => ({
   resolveSshConnectConfigHost: async (config: unknown) => config,
@@ -597,6 +601,7 @@ describe("connectHost", () => {
       [{ hostId: 2 }],
       "owner-1",
       prompt,
+      30000,
     );
     connection.dispose();
   });
@@ -606,12 +611,13 @@ describe("connectHost", () => {
     mocks.createJumpHostChain.mockResolvedValueOnce(jumpClient);
     const connection = await connectHost(
       host({ jumpHosts: [{ hostId: 2 }, { hostId: 3 }] }),
-      { userId: "user-1", purpose: "fleet" },
+      { userId: "user-1", purpose: "fleet", timeoutMs: 5000 },
     );
     expect(mocks.createJumpHostChain).toHaveBeenCalledWith(
       [{ hostId: 2 }, { hostId: 3 }],
       "owner-1",
       undefined,
+      5000,
     );
     expect(jumpClient.forwardOut).toHaveBeenCalledWith(
       "127.0.0.1",
@@ -641,6 +647,29 @@ describe("connectHost", () => {
     expect(
       (connection.client as unknown as FakeSshClient).connectConfig!.sock,
     ).toEqual({ proxied: true });
+  });
+
+  it("goes through the Cloudflare Tunnel hostname instead of jump hosts or SOCKS5", async () => {
+    mocks.openCloudflareTunnel.mockResolvedValueOnce({ tunneled: true });
+    const connection = await connectHost(
+      host({
+        ip: "ssh.example.com",
+        sshOptions: { cloudflareTunnel: true },
+        jumpHosts: [{ hostId: 2 }],
+        useSocks5: true,
+        socks5Host: "proxy",
+      }),
+      { userId: "user-1", purpose: "fleet", timeoutMs: 5000 },
+    );
+    expect(mocks.openCloudflareTunnel).toHaveBeenCalledWith(
+      "ssh.example.com",
+      5000,
+    );
+    expect(mocks.createJumpHostChain).not.toHaveBeenCalled();
+    expect(mocks.createSocks5Connection).not.toHaveBeenCalled();
+    expect(
+      (connection.client as unknown as FakeSshClient).connectConfig!.sock,
+    ).toEqual({ tunneled: true });
   });
 
   it("connects over a stream it is given and skips the transport", async () => {
@@ -749,6 +778,28 @@ describe("connectHost", () => {
     ).rejects.toThrow("SSH connection timeout");
   });
 
+  it("counts a tunnel's handshake against the connection timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      FakeSshClient.nextBehaviour = ["hang"];
+      mocks.openCloudflareTunnel.mockImplementationOnce(async () => {
+        vi.advanceTimersByTime(900);
+        return { tunneled: true };
+      });
+      const attempt = connectHost(
+        host({ sshOptions: { cloudflareTunnel: true } }),
+        { userId: "user-1", purpose: "fleet", timeoutMs: 1000 },
+      );
+      const rejected = expect(attempt).rejects.toThrow(
+        "SSH connection timeout",
+      );
+      await vi.advanceTimersByTimeAsync(150);
+      await rejected;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("lets the provider react to an auth failure", async () => {
     FakeSshClient.nextBehaviour = ["auth-fail"];
     const dispose = registerSignInProvider(true);
@@ -774,6 +825,12 @@ describe("connectHost", () => {
         host({ useSocks5: true, socks5Host: "p", socks5Port: 1 }),
       ),
     ).toBe("stats:owner-1:10.0.0.7:22:root:socks5:p:1");
+    expect(
+      getConnectionPoolKey(
+        "fleet",
+        host({ sshOptions: { cloudflareTunnel: true } }),
+      ),
+    ).toBe("fleet:owner-1:10.0.0.7:22:root:cloudflare");
 
     const result = await withHostConnection(
       "fleet:x",

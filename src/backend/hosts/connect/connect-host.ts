@@ -114,6 +114,8 @@ export async function connectHost(
     throw new SshConnectError(outcome);
   }
 
+  const timeoutMs = options.timeoutMs ?? 30000;
+  const transportStarted = Date.now();
   let jumpClient: Client | null = null;
   if (options.sock) {
     config.sock = options.sock;
@@ -121,9 +123,16 @@ export async function connectHost(
     ({ jumpClient } = await openSshTransport(host, config, {
       log: options.log,
       prompt: options.prompt,
+      timeoutMs,
       ...options.transport,
     }));
   }
+  // A tunnel's handshake spends the same budget as the SSH handshake. A jump
+  // chain keeps its own per-hop timers: it may be waiting on a person's 2FA.
+  const remainingMs =
+    !options.sock && host.sshOptions?.cloudflareTunnel
+      ? Math.max(1, timeoutMs - (Date.now() - transportStarted))
+      : timeoutMs;
 
   const keyboardInteractive =
     options.keyboardInteractive ??
@@ -150,7 +159,7 @@ export async function connectHost(
       settled = true;
       dispose();
       reject(new Error("SSH connection timeout"));
-    }, options.timeoutMs ?? 30000);
+    }, remainingMs);
 
     client.on("ready", () => {
       if (settled) return;
@@ -201,7 +210,8 @@ export function getConnectionPoolKey(
   const socks5Key = host.useSocks5
     ? `:socks5:${host.socks5Host}:${host.socks5Port}`
     : "";
-  return `${prefix}:${host.userId}:${host.ip}:${host.port}:${host.username}${socks5Key}`;
+  const tunnelKey = host.sshOptions?.cloudflareTunnel ? ":cloudflare" : "";
+  return `${prefix}:${host.userId}:${host.ip}:${host.port}:${host.username}${socks5Key}${tunnelKey}`;
 }
 
 /**

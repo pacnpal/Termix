@@ -1,6 +1,7 @@
 import { Client as SSHClient } from "ssh2";
 import { fileLogger } from "../utils/logger.js";
 import { createSocks5Connection } from "../utils/socks5-helper.js";
+import { openCloudflareTunnel } from "./cloudflare-tunnel.js";
 import { getErrorMessage } from "../utils/error-message.js";
 import { getJumpHostSocks5Config } from "./jump-host-proxy.js";
 import { buildConnectConfig } from "./connect/build-connect-config.js";
@@ -28,6 +29,7 @@ type JumpHostConfig = {
   socks5Username?: string | null;
   socks5Password?: string | null;
   socks5ProxyChain?: string | import("../../types/index.js").ProxyNode[] | null;
+  sshOptions?: SshConnectHost["sshOptions"];
   [key: string]: unknown;
 };
 
@@ -65,6 +67,8 @@ export async function createJumpHostChain(
   jumpHosts: Array<{ hostId: number }>,
   userId: string,
   prompt?: SshPromptChannel,
+  /** Bounds each tunnel hop's handshake. Default 30s. */
+  tunnelTimeoutMs?: number,
 ): Promise<SSHClient | null> {
   if (!jumpHosts || jumpHosts.length === 0) {
     return null;
@@ -72,11 +76,15 @@ export async function createJumpHostChain(
 
   let currentClient: SSHClient | null = null;
   const clients: SSHClient[] = [];
+  // The first hop's tunnel or SOCKS5 socket, opened before its client
+  // connects; a hop that fails before then would otherwise leak it.
+  let proxySocket: import("stream").Duplex | null = null;
   let closed = false;
   const closeChain = () => {
     if (closed) return;
     closed = true;
     for (const client of clients) client.end();
+    proxySocket?.destroy();
   };
 
   try {
@@ -106,10 +114,11 @@ export async function createJumpHostChain(
       }
     }
 
-    const firstHopSocks5Config = getJumpHostSocks5Config(jumpHostConfigs[0]);
-    let proxySocket: import("net").Socket | null = null;
-    if (firstHopSocks5Config?.useSocks5) {
-      const firstHop = jumpHostConfigs[0]!;
+    const firstHop = jumpHostConfigs[0]!;
+    const firstHopSocks5Config = getJumpHostSocks5Config(firstHop);
+    if (firstHop.sshOptions?.cloudflareTunnel) {
+      proxySocket = await openCloudflareTunnel(firstHop.ip, tunnelTimeoutMs);
+    } else if (firstHopSocks5Config?.useSocks5) {
       proxySocket = await createSocks5Connection(
         firstHop.ip,
         firstHop.port || 22,
@@ -230,20 +239,33 @@ export async function createJumpHostChain(
         );
 
         if (currentClient) {
+          // A tunnel hop is reached on its hostname's 443 from the hop before.
+          const tunnel = !!jumpHostConfig.sshOptions?.cloudflareTunnel;
+          const fail = (err: Error) => {
+            clearTimeout(timeout);
+            lastError = err;
+            resolve(false);
+          };
           currentClient.forwardOut(
             "127.0.0.1",
             0,
             jumpHostConfig.ip,
-            jumpHostConfig.port || 22,
+            tunnel ? 443 : jumpHostConfig.port || 22,
             (err, stream) => {
-              if (err) {
-                clearTimeout(timeout);
-                lastError = err;
-                resolve(false);
+              if (err) return fail(err);
+              if (!tunnel) {
+                connectConfig.sock = stream;
+                jumpClient.connect(connectConfig);
                 return;
               }
-              connectConfig.sock = stream;
-              jumpClient.connect(connectConfig);
+              openCloudflareTunnel(
+                jumpHostConfig.ip,
+                tunnelTimeoutMs,
+                stream,
+              ).then((sock) => {
+                connectConfig.sock = sock;
+                jumpClient.connect(connectConfig);
+              }, fail);
             },
           );
         } else if (proxySocket) {

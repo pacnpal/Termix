@@ -154,6 +154,7 @@ export function createHostEditorForm(host: Host | null) {
     keepaliveCountMax: sshOptions.keepaliveCountMax ?? 5,
     allowLegacyAlgorithms: sshOptions.allowLegacyAlgorithms ?? true,
     agentForwarding: sshOptions.agentForwarding ?? false,
+    cloudflareTunnel: sshOptions.cloudflareTunnel ?? false,
     agentSocketPath: sshOptions.agentSocketPath ?? "",
     agentIdentity: sshOptions.agentIdentity ?? "",
     environmentVariables:
@@ -301,6 +302,7 @@ export function buildHostEditorPayload(
             keepaliveCountMax: Number(form.keepaliveCountMax),
             allowLegacyAlgorithms: form.allowLegacyAlgorithms,
             agentForwarding: form.agentForwarding,
+            cloudflareTunnel: form.cloudflareTunnel,
             agentSocketPath: usesAgent ? form.agentSocketPath || null : null,
             agentIdentity: usesAgent ? form.agentIdentity || null : null,
             environmentVariables: form.environmentVariables,

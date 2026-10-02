@@ -454,6 +454,19 @@ export function HostEditorGeneralTab({
           </div>
         </div>
         <div className="flex flex-col gap-4 border-t border-border pt-4 pb-2">
+          {protocols.enableSsh && (
+            <HostOnly>
+              <SettingRow
+                label={t("hosts.cloudflareTunnelLabel")}
+                description={t("hosts.cloudflareTunnelDesc")}
+              >
+                <FakeSwitch
+                  checked={form.cloudflareTunnel}
+                  onChange={(v) => setField("cloudflareTunnel", v)}
+                />
+              </SettingRow>
+            </HostOnly>
+          )}
           <SettingRow
             label={t("hosts.useSocks5Proxy")}
             description={t("hosts.useSocks5ProxyDesc")}

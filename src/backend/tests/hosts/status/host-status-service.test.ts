@@ -155,13 +155,14 @@ describe("HostStatusService", () => {
   });
 
   it("goes through the Cloudflare Tunnel hostname when a host uses one", async () => {
-    const { service, ping, pingCloudflareTunnel } = setup([
-      target(1, { cloudflareTunnel: true }),
-    ]);
+    const { service, ping, pingThroughJumpHosts, pingCloudflareTunnel } = setup(
+      [target(1, { cloudflareTunnel: true, jumpHosts: [{ hostId: 9 }] })],
+    );
     active = service;
     await service.statusesFor("owner", null);
     await flush();
     expect(ping).not.toHaveBeenCalled();
+    expect(pingThroughJumpHosts).not.toHaveBeenCalled();
     expect(pingCloudflareTunnel).toHaveBeenCalledWith("10.0.0.1");
   });
 

@@ -66,8 +66,8 @@ export function tcpPing(
 }
 
 /**
- * The same check through a Cloudflare Tunnel hostname: the WebSocket only
- * opens once the tunnel has reached sshd. Answers the banner like tcpPing.
+ * The same check through a Cloudflare Tunnel hostname. Online once sshd
+ * answers through the tunnel; the banner gets the same polite reply.
  */
 export async function cloudflareTunnelPing(
   hostname: string,
@@ -79,18 +79,25 @@ export async function cloudflareTunnelPing(
   } catch {
     return false;
   }
-  stream.on("error", () => {
-    // expected: the probe hangs up mid-handshake
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+      setTimeout(() => stream.destroy(), 200);
+    };
+    const timeout = setTimeout(() => finish(false), timeoutMs);
+    stream.on("error", () => finish(false));
+    stream.once("close", () => finish(false));
+    stream.once("data", (data: Buffer) => {
+      if (data.toString("utf8").startsWith("SSH-")) {
+        stream.end("SSH-2.0-TermixHealthCheck\r\n");
+      }
+      finish(true);
+    });
   });
-  const dataTimeout = setTimeout(() => stream.destroy(), 2000);
-  stream.once("data", (data: Buffer) => {
-    clearTimeout(dataTimeout);
-    if (data.toString("utf8").startsWith("SSH-")) {
-      stream.end("SSH-2.0-TermixHealthCheck\r\n");
-    }
-    setTimeout(() => stream.destroy(), 200);
-  });
-  return true;
 }
 
 /** The same check from the far end of a jump host chain. Ends the chain. */

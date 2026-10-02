@@ -443,12 +443,11 @@ export class HostStatusService {
     let reachable = false;
     try {
       const port = await this.portFor(target);
-      reachable =
-        target.jumpHosts.length > 0
+      reachable = target.cloudflareTunnel
+        ? await this.deps.pingCloudflareTunnel(target.ip)
+        : target.jumpHosts.length > 0
           ? await this.deps.pingThroughJumpHosts(target, port)
-          : target.cloudflareTunnel
-            ? await this.deps.pingCloudflareTunnel(target.ip)
-            : await this.deps.ping(target.ip, port);
+          : await this.deps.ping(target.ip, port);
     } catch {
       reachable = false;
     }

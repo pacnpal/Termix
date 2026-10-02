@@ -647,12 +647,13 @@ describe("connectHost", () => {
     ).toEqual({ proxied: true });
   });
 
-  it("goes through the Cloudflare Tunnel hostname instead of TCP or SOCKS5", async () => {
+  it("goes through the Cloudflare Tunnel hostname instead of jump hosts or SOCKS5", async () => {
     mocks.openCloudflareTunnel.mockResolvedValueOnce({ tunneled: true });
     const connection = await connectHost(
       host({
         ip: "ssh.example.com",
         sshOptions: { cloudflareTunnel: true },
+        jumpHosts: [{ hostId: 2 }],
         useSocks5: true,
         socks5Host: "proxy",
       }),
@@ -662,6 +663,7 @@ describe("connectHost", () => {
       "ssh.example.com",
       expect.any(Number),
     );
+    expect(mocks.createJumpHostChain).not.toHaveBeenCalled();
     expect(mocks.createSocks5Connection).not.toHaveBeenCalled();
     expect(
       (connection.client as unknown as FakeSshClient).connectConfig!.sock,
